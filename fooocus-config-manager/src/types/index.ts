@@ -66,6 +66,7 @@ export interface FilterOptions {
   search: string;
   tags: string[];
   isFavorite: boolean | null;
+  baseModel: string;
   sortBy: 'name' | 'updatedAt' | 'createdAt' | 'useCount';
   sortOrder: 'asc' | 'desc';
 }

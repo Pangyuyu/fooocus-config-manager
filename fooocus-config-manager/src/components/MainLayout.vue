@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { NLayout, NLayoutSider, NLayoutContent, NInput, NButton, NIcon, NEmpty, NSpin, NUpload, useMessage } from 'naive-ui';
+import { NLayout, NLayoutSider, NLayoutContent, NInput, NButton, NIcon, NEmpty, NSpin, NUpload, NSelect, useMessage } from 'naive-ui';
 import type { UploadCustomRequestOptions } from 'naive-ui';
 import { Search, Plus, Settings, Star, Tag as TagIcon, LayoutGrid, List, Upload } from 'lucide-vue-next';
 import type { FunctionalComponent } from 'vue';
@@ -23,6 +23,7 @@ const store = usePresetStore();
 const message = useMessage();
 
 const searchQuery = ref('');
+const baseModelFilter = ref<string | null>(null);
 const viewMode = ref<'grid' | 'list'>('grid');
 const showEditor = ref(false);
 const editingPreset = ref<PresetConfig | null>(null);
@@ -59,6 +60,16 @@ const handleSidebarClick = (key: string) => {
 
 const handleSearch = () => {
   store.setFilter({ search: searchQuery.value });
+};
+
+const baseModelOptions = computed(() => [
+  { label: '全部模型', value: '' },
+  ...store.baseModels.map(model => ({ label: model, value: model })),
+]);
+
+const handleBaseModelChange = (value: string) => {
+  baseModelFilter.value = value || null;
+  store.setFilter({ baseModel: value || '' });
 };
 
 const handleCreatePreset = () => {
@@ -199,6 +210,15 @@ onMounted(() => {
               </template>
             </NInput>
           </div>
+
+          <NSelect
+            v-model:value="baseModelFilter"
+            :options="baseModelOptions"
+            placeholder="基础模型"
+            clearable
+            style="min-width: 150px"
+            @update:value="handleBaseModelChange"
+          />
 
           <div class="flex items-center gap-2">
             <NButton

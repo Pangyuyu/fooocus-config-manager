@@ -70,6 +70,14 @@ const handleCopy = async () => {
 
         <div class="flex flex-wrap gap-1 mb-3">
           <NTag
+            v-if="preset.model.baseModel"
+            size="small"
+            type="info"
+            :bordered="false"
+          >
+            {{ preset.model.baseModel }}
+          </NTag>
+          <NTag
             v-for="tag in preset.tags.slice(0, 3)"
             :key="tag"
             size="small"

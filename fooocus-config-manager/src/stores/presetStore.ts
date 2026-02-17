@@ -21,6 +21,7 @@ export const usePresetStore = defineStore('preset', {
       search: '',
       tags: [],
       isFavorite: null,
+      baseModel: '',
       sortBy: 'updatedAt',
       sortOrder: 'desc',
     },
@@ -51,6 +52,12 @@ export const usePresetStore = defineStore('preset', {
         result = result.filter(p => p.isFavorite === state.filter.isFavorite);
       }
 
+      if (state.filter.baseModel) {
+        result = result.filter(p => 
+          p.model.baseModel.toLowerCase().includes(state.filter.baseModel.toLowerCase())
+        );
+      }
+
       result.sort((a, b) => {
         let comparison = 0;
         switch (state.filter.sortBy) {
@@ -74,6 +81,16 @@ export const usePresetStore = defineStore('preset', {
     },
 
     favoritePresets: (state) => state.presets.filter(p => p.isFavorite),
+
+    baseModels: (state) => {
+      const models = new Set<string>();
+      state.presets.forEach(p => {
+        if (p.model.baseModel) {
+          models.add(p.model.baseModel);
+        }
+      });
+      return Array.from(models).sort();
+    },
 
     getPresetById: (state) => (id: string) => state.presets.find(p => p.id === id),
   },
