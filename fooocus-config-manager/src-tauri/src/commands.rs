@@ -1,4 +1,4 @@
-use crate::database::{Database, PresetConfig, Tag, ModelConfig, SamplingConfig, PromptConfig, ImageConfig, LoRA};
+use crate::database::{Database, PresetConfig, Tag, ModelConfig, SamplingConfig, PromptConfig, ImageConfig};
 use tauri::State;
 use rusqlite::params;
 use serde_json;

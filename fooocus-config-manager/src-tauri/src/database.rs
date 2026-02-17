@@ -2,7 +2,6 @@ use rusqlite::{Connection, Result as SqliteResult};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::path::PathBuf;
-use tauri::Manager;
 
 pub struct Database(pub Mutex<Connection>);
 
@@ -129,13 +128,4 @@ impl Database {
         )?;
         Ok(())
     }
-}
-
-pub fn get_db(app_handle: &tauri::AppHandle) -> Database {
-    let app_data_dir = app_handle.path().app_data_dir().expect("Failed to get app data dir");
-    Database::new(app_data_dir).expect("Failed to initialize database")
-}
-
-pub fn init_db(app_handle: &tauri::AppHandle) -> Database {
-    get_db(app_handle)
 }
