@@ -192,6 +192,7 @@ onMounted(() => {
               placeholder="搜索配置..."
               clearable
               @update:value="handleSearch"
+              style="min-width: 200px"
             >
               <template #prefix>
                 <NIcon :component="Search" />
