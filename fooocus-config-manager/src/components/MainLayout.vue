@@ -2,11 +2,12 @@
 import { ref, computed, onMounted } from 'vue';
 import { NLayout, NLayoutSider, NLayoutContent, NInput, NButton, NIcon, NEmpty, NSpin, NUpload, NSelect, useMessage } from 'naive-ui';
 import type { UploadCustomRequestOptions } from 'naive-ui';
-import { Search, Plus, Settings, Star, Tag as TagIcon, LayoutGrid, List, Upload } from 'lucide-vue-next';
+import { Search, Plus, Settings, Star, Tag as TagIcon, LayoutGrid, List, Upload, Box } from 'lucide-vue-next';
 import type { FunctionalComponent } from 'vue';
 import { usePresetStore } from '../stores/presetStore';
 import PresetCard from './PresetCard.vue';
 import PresetEditor from './PresetEditor.vue';
+import ModelManagement from './ModelManagement.vue';
 import type { PresetConfig } from '../types';
 import { parseFooocusPresetJson, downloadPresetAsJson } from '../utils/presetConverter';
 
@@ -16,7 +17,7 @@ interface SidebarItem {
   icon?: FunctionalComponent;
   count?: number;
   color?: string;
-  type?: 'divider';
+  type?: 'divider' | 'section';
 }
 
 const store = usePresetStore();
@@ -28,8 +29,10 @@ const viewMode = ref<'grid' | 'list'>('grid');
 const showEditor = ref(false);
 const editingPreset = ref<PresetConfig | null>(null);
 const collapsed = ref(false);
+const activeView = ref<'presets' | 'models'>('presets');
 
 const sidebarItems = computed<SidebarItem[]>(() => [
+  { label: '配置管理', key: 'section-presets', type: 'section' },
   { label: '全部配置', key: 'all', icon: LayoutGrid, count: store.presets.length },
   { label: '收藏', key: 'favorites', icon: Star, count: store.favoritePresets.length },
   { type: 'divider', key: 'd1' },
@@ -40,12 +43,23 @@ const sidebarItems = computed<SidebarItem[]>(() => [
     count: tag.count,
     color: tag.color,
   })),
+  { type: 'divider', key: 'd2' },
+  { label: '模型管理', key: 'section-models', type: 'section' },
+  { label: '模型信息', key: 'models', icon: Box },
 ]);
 
 const activeSidebarItem = ref('all');
 
 const handleSidebarClick = (key: string) => {
+  if (key === 'models') {
+    activeView.value = 'models';
+    activeSidebarItem.value = key;
+    return;
+  }
+  
+  activeView.value = 'presets';
   activeSidebarItem.value = key;
+  
   if (key === 'all') {
     store.setFilter({ tags: [], isFavorite: null });
   } else if (key === 'favorites') {
@@ -160,27 +174,42 @@ onMounted(() => {
         <div
           v-for="item in sidebarItems"
           :key="item.key"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors mb-1"
-          :class="[
-            activeSidebarItem === item.key
-              ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300'
-              : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
-          ]"
-          @click="item.type !== 'divider' && handleSidebarClick(item.key)"
+          class="mb-1"
         >
-          <component
-            v-if="item.icon"
-            :is="item.icon"
-            :size="18"
-            :style="item.color ? { color: item.color } : {}"
-          />
-          <span v-if="!collapsed" class="flex-1 text-sm">{{ item.label }}</span>
-          <span
-            v-if="!collapsed && item.count !== undefined"
-            class="text-xs text-gray-500 dark:text-gray-400"
+          <div
+            v-if="item.type === 'section'"
+            class="px-3 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider"
           >
-            {{ item.count }}
-          </span>
+            {{ item.label }}
+          </div>
+          <div
+            v-else-if="item.type === 'divider'"
+            class="my-2 border-t border-gray-200 dark:border-gray-700"
+          />
+          <div
+            v-else
+            class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors"
+            :class="[
+              activeSidebarItem === item.key
+                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300'
+                : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+            ]"
+            @click="handleSidebarClick(item.key)"
+          >
+            <component
+              v-if="item.icon"
+              :is="item.icon"
+              :size="18"
+              :style="item.color ? { color: item.color } : {}"
+            />
+            <span v-if="!collapsed" class="flex-1 text-sm">{{ item.label }}</span>
+            <span
+              v-if="!collapsed && item.count !== undefined"
+              class="text-xs text-gray-500 dark:text-gray-400"
+            >
+              {{ item.count }}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -195,7 +224,9 @@ onMounted(() => {
     </NLayoutSider>
 
     <NLayoutContent :native-scrollbar="false" class="bg-white dark:bg-gray-800">
-      <div class="h-full flex flex-col">
+      <ModelManagement v-if="activeView === 'models'" />
+      
+      <div v-else class="h-full flex flex-col">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-4">
           <div class="flex-1">
             <NInput

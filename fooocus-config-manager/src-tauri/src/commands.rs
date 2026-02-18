@@ -1,4 +1,4 @@
-use crate::database::{Database, PresetConfig, Tag, ModelConfig, SamplingConfig, PromptConfig, ImageConfig};
+use crate::database::{Database, PresetConfig, Tag, ModelConfig, SamplingConfig, PromptConfig, ImageConfig, ModelInfo};
 use tauri::State;
 use rusqlite::params;
 use serde_json;
@@ -320,4 +320,192 @@ pub fn increment_use_count(db: State<'_, Database>, id: String) -> Result<(), St
         params![Utc::now().to_rfc3339(), id],
     ).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_all_models(db: State<'_, Database>) -> Result<Vec<ModelInfo>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT id, name, file_name, model_type, description, scope, path, tags, created_at, updated_at 
+         FROM models ORDER BY updated_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let models = stmt.query_map([], |row| {
+        Ok(ModelInfo {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            file_name: row.get(2)?,
+            model_type: row.get(3)?,
+            description: row.get(4)?,
+            scope: serde_json::from_str(&row.get::<_, String>(5)?).unwrap_or_default(),
+            path: row.get(6)?,
+            tags: serde_json::from_str(&row.get::<_, String>(7)?).unwrap_or_default(),
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    models.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_models_by_type(db: State<'_, Database>, model_type: String) -> Result<Vec<ModelInfo>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT id, name, file_name, model_type, description, scope, path, tags, created_at, updated_at 
+         FROM models WHERE model_type = ?1 ORDER BY updated_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let models = stmt.query_map(params![model_type], |row| {
+        Ok(ModelInfo {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            file_name: row.get(2)?,
+            model_type: row.get(3)?,
+            description: row.get(4)?,
+            scope: serde_json::from_str(&row.get::<_, String>(5)?).unwrap_or_default(),
+            path: row.get(6)?,
+            tags: serde_json::from_str(&row.get::<_, String>(7)?).unwrap_or_default(),
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    models.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_model_by_id(db: State<'_, Database>, id: String) -> Result<Option<ModelInfo>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT id, name, file_name, model_type, description, scope, path, tags, created_at, updated_at 
+         FROM models WHERE id = ?1"
+    ).map_err(|e| e.to_string())?;
+
+    let result = stmt.query_row(params![id], |row| {
+        Ok(ModelInfo {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            file_name: row.get(2)?,
+            model_type: row.get(3)?,
+            description: row.get(4)?,
+            scope: serde_json::from_str(&row.get::<_, String>(5)?).unwrap_or_default(),
+            path: row.get(6)?,
+            tags: serde_json::from_str(&row.get::<_, String>(7)?).unwrap_or_default(),
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
+        })
+    });
+
+    match result {
+        Ok(model) => Ok(Some(model)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn create_model(db: State<'_, Database>, model: ModelInfo) -> Result<ModelInfo, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
+    
+    let scope_json = serde_json::to_string(&model.scope).map_err(|e| e.to_string())?;
+    let tags_json = serde_json::to_string(&model.tags).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO models (id, name, file_name, model_type, description, scope, path, tags, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            id,
+            model.name,
+            model.file_name,
+            model.model_type,
+            model.description,
+            scope_json,
+            model.path,
+            tags_json,
+            now,
+            now,
+        ],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(ModelInfo {
+        id,
+        name: model.name,
+        file_name: model.file_name,
+        model_type: model.model_type,
+        description: model.description,
+        scope: model.scope,
+        path: model.path,
+        tags: model.tags,
+        created_at: now.clone(),
+        updated_at: now,
+    })
+}
+
+#[tauri::command]
+pub fn update_model(db: State<'_, Database>, model: ModelInfo) -> Result<ModelInfo, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let now = Utc::now().to_rfc3339();
+    
+    let scope_json = serde_json::to_string(&model.scope).map_err(|e| e.to_string())?;
+    let tags_json = serde_json::to_string(&model.tags).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE models SET name = ?1, file_name = ?2, model_type = ?3, description = ?4, 
+         scope = ?5, path = ?6, tags = ?7, updated_at = ?8 WHERE id = ?9",
+        params![
+            model.name,
+            model.file_name,
+            model.model_type,
+            model.description,
+            scope_json,
+            model.path,
+            tags_json,
+            now,
+            model.id,
+        ],
+    ).map_err(|e| e.to_string())?;
+
+    Ok(ModelInfo {
+        updated_at: now,
+        ..model
+    })
+}
+
+#[tauri::command]
+pub fn delete_model(db: State<'_, Database>, id: String) -> Result<(), String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM models WHERE id = ?1", params![id]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn search_models(db: State<'_, Database>, query: String) -> Result<Vec<ModelInfo>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let search_pattern = format!("%{}%", query);
+    
+    let mut stmt = conn.prepare(
+        "SELECT id, name, file_name, model_type, description, scope, path, tags, created_at, updated_at 
+         FROM models WHERE name LIKE ?1 OR description LIKE ?1 OR scope LIKE ?1 OR tags LIKE ?1
+         ORDER BY updated_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let models = stmt.query_map(params![search_pattern], |row| {
+        Ok(ModelInfo {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            file_name: row.get(2)?,
+            model_type: row.get(3)?,
+            description: row.get(4)?,
+            scope: serde_json::from_str(&row.get::<_, String>(5)?).unwrap_or_default(),
+            path: row.get(6)?,
+            tags: serde_json::from_str(&row.get::<_, String>(7)?).unwrap_or_default(),
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    models.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }

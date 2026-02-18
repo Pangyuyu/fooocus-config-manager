@@ -87,6 +87,22 @@ pub struct Tag {
     pub count: i32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelInfo {
+    pub id: String,
+    pub name: String,
+    pub file_name: String,
+    #[serde(rename = "type")]
+    pub model_type: String,
+    pub description: String,
+    pub scope: Vec<String>,
+    pub path: String,
+    pub tags: Vec<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 impl Database {
     pub fn new(app_data_dir: PathBuf) -> SqliteResult<Self> {
         std::fs::create_dir_all(&app_data_dir).ok();
@@ -121,9 +137,24 @@ impl Database {
                 color TEXT DEFAULT '#6366f1'
             );
 
+            CREATE TABLE IF NOT EXISTS models (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                file_name TEXT,
+                model_type TEXT NOT NULL,
+                description TEXT,
+                scope TEXT,
+                path TEXT,
+                tags TEXT,
+                created_at TEXT,
+                updated_at TEXT
+            );
+
             CREATE INDEX IF NOT EXISTS idx_presets_name ON presets(name);
             CREATE INDEX IF NOT EXISTS idx_presets_created_at ON presets(created_at);
             CREATE INDEX IF NOT EXISTS idx_presets_is_favorite ON presets(is_favorite);
+            CREATE INDEX IF NOT EXISTS idx_models_name ON models(name);
+            CREATE INDEX IF NOT EXISTS idx_models_type ON models(model_type);
             "#,
         )?;
         Ok(())

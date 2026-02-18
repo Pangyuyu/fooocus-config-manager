@@ -62,6 +62,29 @@ export interface Tag {
   count: number;
 }
 
+export type ModelType = 'Checkpoint' | 'LoRA' | 'Refiner' | 'Embedding';
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+  fileName: string;
+  type: ModelType;
+  description: string;
+  scope: string[];
+  path: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ModelFilterOptions {
+  search: string;
+  type: ModelType | '';
+  tags: string[];
+  sortBy: 'name' | 'updatedAt' | 'createdAt';
+  sortOrder: 'asc' | 'desc';
+}
+
 export interface FilterOptions {
   search: string;
   tags: string[];
@@ -160,3 +183,33 @@ export function createEmptyPresetConfig(): PresetConfig {
     },
   };
 }
+
+export function createEmptyModelInfo(): ModelInfo {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    name: '',
+    fileName: '',
+    type: 'Checkpoint',
+    description: '',
+    scope: [],
+    path: '',
+    tags: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export const MODEL_TYPES: ModelType[] = ['Checkpoint', 'LoRA', 'Refiner', 'Embedding'];
+
+export const DEFAULT_SCOPE_TAGS = [
+  '人像',
+  '写实',
+  '动漫',
+  '风景',
+  '通用',
+  '细节增强',
+  '风格化',
+  '艺术',
+  '插画',
+] as const;
