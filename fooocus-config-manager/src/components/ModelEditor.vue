@@ -49,6 +49,7 @@ const handleClose = () => {
   <NModal
     :show="true"
     :mask-closable="false"
+    :closable="false"
     :close-on-esc="true"
     preset="card"
     :style="{ width: '600px', maxHeight: '90vh' }"

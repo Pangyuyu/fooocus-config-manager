@@ -69,6 +69,7 @@ const handleClose = () => {
     :show="true"
     :mask-closable="false"
     :close-on-esc="true"
+    :closable="false"
     preset="card"
     :style="{ width: '800px', maxHeight: '90vh' }"
     :title="isNewPreset ? '新建配置' : '编辑配置'"
