@@ -54,7 +54,7 @@ const handleCopy = async () => {
   <NCard
     :class="[
       'cursor-pointer transition-all hover:shadow-md',
-      viewMode === 'list' ? 'flex items-center' : ''
+      viewMode === 'list' ? 'flex items-center w-full' : ''
     ]"
     size="small"
     hoverable

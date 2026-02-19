@@ -312,7 +312,7 @@ onMounted(() => {
               :class="[
                 viewMode === 'grid'
                   ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-                  : 'flex flex-col gap-2'
+                  : 'flex flex-col gap-2 w-full'
               ]"
             >
               <PresetCard
