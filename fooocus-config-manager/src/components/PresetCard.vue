@@ -54,7 +54,7 @@ const handleCopy = async () => {
   <NCard
     :class="[
       'cursor-pointer transition-all hover:shadow-md',
-      viewMode === 'list' ? 'flex items-center w-full' : ''
+      viewMode === 'list' ? 'flex items-center w-full list-item' : ''
     ]"
     size="small"
     hoverable
@@ -110,7 +110,7 @@ const handleCopy = async () => {
         </div>
       </div>
 
-      <div :class="[viewMode === 'list' ? 'flex items-center gap-1 ml-4' : 'flex items-center gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700']">
+      <div :class="[viewMode === 'list' ? 'flex items-center gap-1 ml-4 list-ctrl' : 'flex items-center gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700']">
         <NButton quaternary size="small" @click.stop="emit('edit', preset)">
           <template #icon>
             <NIcon :component="Edit" />
@@ -148,5 +148,14 @@ const handleCopy = async () => {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+.list-item{
+ background-color: aliceblue;
+ align-items: flex-start;
+}
+.list-ctrl{
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
 }
 </style>
