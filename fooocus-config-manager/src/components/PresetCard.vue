@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { NCard, NButton, NIcon, NTag, NPopconfirm } from 'naive-ui';
 import { Star, Edit, Trash2, Copy, Download } from 'lucide-vue-next';
 import type { PresetConfig } from '../types';
+import { useModelStore } from '../stores/modelStore';
 
 const props = defineProps<{
   preset: PresetConfig;
@@ -15,6 +16,8 @@ const emit = defineEmits<{
   toggleFavorite: [id: string];
   export: [preset: PresetConfig];
 }>();
+
+const modelStore = useModelStore();
 
 const formattedDate = computed(() => {
   return new Date(props.preset.updatedAt).toLocaleDateString('zh-CN', {
@@ -29,6 +32,16 @@ const truncatedDescription = computed(() => {
     return props.preset.description.slice(0, 100) + '...';
   }
   return props.preset.description || '暂无描述';
+});
+
+const displayBaseModel = computed(() => {
+  if (props.preset.model.baseModelId) {
+    const model = modelStore.getModelById(props.preset.model.baseModelId);
+    if (model) {
+      return model.fileName || model.name;
+    }
+  }
+  return props.preset.model.baseModel;
 });
 
 const handleCopy = async () => {
@@ -70,12 +83,12 @@ const handleCopy = async () => {
 
         <div class="flex flex-wrap gap-1 mb-3">
           <NTag
-            v-if="preset.model.baseModel"
+            v-if="displayBaseModel"
             size="small"
             type="info"
             :bordered="false"
           >
-            {{ preset.model.baseModel }}
+            {{ displayBaseModel }}
           </NTag>
           <NTag
             v-for="tag in preset.tags.slice(0, 3)"

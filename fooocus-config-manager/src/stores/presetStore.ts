@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { invoke } from '@tauri-apps/api/core';
 import type { PresetConfig, Tag, FilterOptions } from '../types';
 import { createEmptyPresetConfig } from '../types';
+import { useModelStore } from './modelStore';
 
 interface PresetState {
   presets: PresetConfig[];
@@ -31,6 +32,7 @@ export const usePresetStore = defineStore('preset', {
 
   getters: {
     filteredPresets: (state) => {
+      const modelStore = useModelStore();
       let result = [...state.presets];
 
       if (state.filter.search) {
@@ -53,9 +55,16 @@ export const usePresetStore = defineStore('preset', {
       }
 
       if (state.filter.baseModel) {
-        result = result.filter(p => 
-          p.model.baseModel.toLowerCase().includes(state.filter.baseModel.toLowerCase())
-        );
+        result = result.filter(p => {
+          if (p.model.baseModelId) {
+            const model = modelStore.getModelById(p.model.baseModelId);
+            if (model) {
+              const modelDisplay = model.fileName || model.name;
+              return modelDisplay.toLowerCase().includes(state.filter.baseModel.toLowerCase());
+            }
+          }
+          return p.model.baseModel.toLowerCase().includes(state.filter.baseModel.toLowerCase());
+        });
       }
 
       result.sort((a, b) => {
@@ -83,8 +92,16 @@ export const usePresetStore = defineStore('preset', {
     favoritePresets: (state) => state.presets.filter(p => p.isFavorite),
 
     baseModels: (state) => {
+      const modelStore = useModelStore();
       const models = new Set<string>();
       state.presets.forEach(p => {
+        if (p.model.baseModelId) {
+          const model = modelStore.getModelById(p.model.baseModelId);
+          if (model) {
+            models.add(model.fileName || model.name);
+            return;
+          }
+        }
         if (p.model.baseModel) {
           models.add(p.model.baseModel);
         }
