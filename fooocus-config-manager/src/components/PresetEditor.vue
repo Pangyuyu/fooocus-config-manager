@@ -5,8 +5,9 @@ import {
   NSpace, NIcon, NDynamicTags, NDivider, NTabs, NTabPane
 } from 'naive-ui';
 import { X, Plus, Save } from 'lucide-vue-next';
-import type { PresetConfig } from '../types';
+import type { PresetConfig, ModelInfo } from '../types';
 import { createEmptyPresetConfig, DEFAULT_SAMPLERS, DEFAULT_SCHEDULERS, DEFAULT_ASPECT_RATIOS } from '../types';
+import { useModelStore } from '../stores/modelStore';
 
 const props = defineProps<{
   preset: PresetConfig | null;
@@ -17,6 +18,7 @@ const emit = defineEmits<{
   save: [preset: PresetConfig];
 }>();
 
+const modelStore = useModelStore();
 const formData = ref<PresetConfig>(createEmptyPresetConfig());
 const activeTab = ref('basic');
 
@@ -38,6 +40,76 @@ const performanceOptions = [
   { label: '质量优先', value: 'Quality' },
   { label: 'Lightning', value: 'Lightning' },
 ];
+
+const checkpointOptions = computed(() => {
+  const models = modelStore.checkpoints;
+  const options = models.map((m: ModelInfo) => ({
+    label: m.name,
+    value: m.id,
+    fileName: m.fileName,
+  }));
+  return options;
+});
+
+const refinerOptions = computed(() => {
+  const models = modelStore.refiners;
+  const options = models.map((m: ModelInfo) => ({
+    label: m.name,
+    value: m.id,
+    fileName: m.fileName,
+  }));
+  const emptyOption = { label: '无精修模型', value: '' };
+  return [emptyOption, ...options];
+});
+
+const loraOptions = computed(() => {
+  const models = modelStore.loras;
+  return models.map((m: ModelInfo) => ({
+    label: m.name,
+    value: m.id,
+    fileName: m.fileName,
+  }));
+});
+
+const handleBaseModelSelect = (modelId: string | null) => {
+  if (modelId) {
+    const model = modelStore.getModelById(modelId);
+    if (model) {
+      formData.value.model.baseModelId = modelId;
+      formData.value.model.baseModel = model.fileName;
+    }
+  } else {
+    formData.value.model.baseModelId = undefined;
+  }
+};
+
+const handleRefinerModelSelect = (modelId: string | null) => {
+  if (modelId) {
+    const model = modelStore.getModelById(modelId);
+    if (model) {
+      formData.value.model.refinerModelId = modelId;
+      formData.value.model.refinerModel = model.fileName;
+    }
+  } else {
+    formData.value.model.refinerModelId = undefined;
+    formData.value.model.refinerModel = '';
+  }
+};
+
+const handleLoraModelSelect = (index: number, modelId: string | null) => {
+  if (modelId) {
+    const model = modelStore.getModelById(modelId);
+    if (model) {
+      formData.value.model.loras[index].modelId = modelId;
+      formData.value.model.loras[index].modelName = model.fileName;
+      if (!formData.value.model.loras[index].name) {
+        formData.value.model.loras[index].name = model.name;
+      }
+    }
+  } else {
+    formData.value.model.loras[index].modelId = undefined;
+  }
+};
 
 const handleAddLora = () => {
   formData.value.model.loras.push({
@@ -111,11 +183,41 @@ const handleClose = () => {
           <NTabPane name="model" tab="模型配置">
             <div class="py-4 space-y-4">
               <NFormItem label="基础模型">
-                <NInput v-model:value="formData.model.baseModel" placeholder="Checkpoint 模型名称" />
+                <div class="flex gap-2 w-full">
+                  <NSelect
+                    :value="formData.model.baseModelId"
+                    :options="checkpointOptions"
+                    placeholder="从模型库选择"
+                    filterable
+                    clearable
+                    class="flex-1"
+                    @update:value="handleBaseModelSelect"
+                  />
+                  <NInput
+                    v-model:value="formData.model.baseModel"
+                    placeholder="或手动输入模型名称"
+                    class="flex-1"
+                  />
+                </div>
               </NFormItem>
 
               <NFormItem label="精修模型">
-                <NInput v-model:value="formData.model.refinerModel" placeholder="Refiner 模型名称（可选）" />
+                <div class="flex gap-2 w-full">
+                  <NSelect
+                    :value="formData.model.refinerModelId"
+                    :options="refinerOptions"
+                    placeholder="从模型库选择"
+                    filterable
+                    clearable
+                    class="flex-1"
+                    @update:value="handleRefinerModelSelect"
+                  />
+                  <NInput
+                    v-model:value="formData.model.refinerModel"
+                    placeholder="或手动输入模型名称"
+                    class="flex-1"
+                  />
+                </div>
               </NFormItem>
 
               <NFormItem label="精修切换点">
@@ -132,7 +234,24 @@ const handleClose = () => {
               <div v-for="(lora, index) in formData.model.loras" :key="index" class="flex items-start gap-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <div class="flex-1 space-y-2">
                   <NInput v-model:value="lora.name" placeholder="LoRA 名称" size="small" />
-                  <NInput v-model:value="lora.modelName" placeholder="模型文件名" size="small" />
+                  <div class="flex gap-2">
+                    <NSelect
+                      :value="lora.modelId"
+                      :options="loraOptions"
+                      placeholder="从模型库选择"
+                      filterable
+                      clearable
+                      class="flex-1"
+                      size="small"
+                      @update:value="(val: string | null) => handleLoraModelSelect(index, val)"
+                    />
+                    <NInput
+                      v-model:value="lora.modelName"
+                      placeholder="或手动输入文件名"
+                      class="flex-1"
+                      size="small"
+                    />
+                  </div>
                   <NInputNumber
                     v-model:value="lora.weight"
                     placeholder="权重"

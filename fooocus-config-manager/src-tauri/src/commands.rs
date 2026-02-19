@@ -1,4 +1,4 @@
-use crate::database::{Database, PresetConfig, Tag, ModelConfig, SamplingConfig, PromptConfig, ImageConfig, ModelInfo};
+use crate::database::{Database, PresetConfig, Tag, ModelConfig, SamplingConfig, PromptConfig, ImageConfig, ModelInfo, ModelUsageInfo};
 use tauri::State;
 use rusqlite::params;
 use serde_json;
@@ -26,7 +26,9 @@ pub fn get_all_presets(db: State<'_, Database>) -> Result<Vec<PresetConfig>, Str
             updated_at: row.get(7)?,
             model: serde_json::from_str(&row.get::<_, String>(8)?).unwrap_or_else(|_| ModelConfig {
                 base_model: String::new(),
+                base_model_id: None,
                 refiner_model: String::new(),
+                refiner_model_id: None,
                 refiner_switch: 0.5,
                 loras: vec![],
             }),
@@ -75,7 +77,9 @@ pub fn get_preset_by_id(db: State<'_, Database>, id: String) -> Result<Option<Pr
             updated_at: row.get(7)?,
             model: serde_json::from_str(&row.get::<_, String>(8)?).unwrap_or_else(|_| ModelConfig {
                 base_model: String::new(),
+                base_model_id: None,
                 refiner_model: String::new(),
+                refiner_model_id: None,
                 refiner_switch: 0.5,
                 loras: vec![],
             }),
@@ -228,7 +232,9 @@ pub fn search_presets(db: State<'_, Database>, query: String) -> Result<Vec<Pres
             updated_at: row.get(7)?,
             model: serde_json::from_str(&row.get::<_, String>(8)?).unwrap_or_else(|_| ModelConfig {
                 base_model: String::new(),
+                base_model_id: None,
                 refiner_model: String::new(),
+                refiner_model_id: None,
                 refiner_switch: 0.5,
                 loras: vec![],
             }),
@@ -346,6 +352,89 @@ pub fn get_all_models(db: State<'_, Database>) -> Result<Vec<ModelInfo>, String>
     }).map_err(|e| e.to_string())?;
 
     models.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_presets_by_model_id(db: State<'_, Database>, model_id: String) -> Result<Vec<PresetConfig>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    
+    let mut stmt = conn.prepare(
+        "SELECT id, name, description, tags, is_favorite, use_count, created_at, updated_at, 
+                model_config, sampling_config, prompt_config, image_config, resources 
+         FROM presets ORDER BY updated_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let presets = stmt.query_map([], |row| {
+        Ok(PresetConfig {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            description: row.get(2)?,
+            tags: serde_json::from_str(&row.get::<_, String>(3)?).unwrap_or_default(),
+            is_favorite: row.get::<_, i32>(4)? != 0,
+            use_count: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+            model: serde_json::from_str(&row.get::<_, String>(8)?).unwrap_or_else(|_| ModelConfig {
+                base_model: String::new(),
+                base_model_id: None,
+                refiner_model: String::new(),
+                refiner_model_id: None,
+                refiner_switch: 0.5,
+                loras: vec![],
+            }),
+            sampling: serde_json::from_str(&row.get::<_, String>(9)?).unwrap_or_else(|_| SamplingConfig {
+                cfg_scale: 7.0,
+                sample_sharpness: 2.0,
+                sampler: String::from("dpmpp_2m_sde_gpu"),
+                scheduler: String::from("karras"),
+                performance: String::from("Speed"),
+                steps: 30,
+            }),
+            prompt: serde_json::from_str(&row.get::<_, String>(10)?).unwrap_or_else(|_| PromptConfig {
+                positive: String::new(),
+                negative: String::new(),
+                styles: vec![],
+            }),
+            image: serde_json::from_str(&row.get::<_, String>(11)?).unwrap_or_else(|_| ImageConfig {
+                aspect_ratio: String::from("1152*896"),
+                image_count: 4,
+            }),
+            resources: row.get::<_, Option<String>>(12)?.and_then(|s| serde_json::from_str(&s).ok()),
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let all_presets: Vec<PresetConfig> = presets.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+    
+    let filtered: Vec<PresetConfig> = all_presets.into_iter().filter(|p| {
+        if p.model.base_model_id.as_deref() == Some(model_id.as_str()) {
+            return true;
+        }
+        if p.model.refiner_model_id.as_deref() == Some(model_id.as_str()) {
+            return true;
+        }
+        for lora in &p.model.loras {
+            if lora.model_id.as_deref() == Some(model_id.as_str()) {
+                return true;
+            }
+        }
+        false
+    }).collect();
+
+    Ok(filtered)
+}
+
+#[tauri::command]
+pub fn check_model_usage(db: State<'_, Database>, model_id: String) -> Result<ModelUsageInfo, String> {
+    let presets = get_presets_by_model_id(db, model_id)?;
+    
+    let preset_names: Vec<String> = presets.iter().map(|p| p.name.clone()).collect();
+    let usage_count = preset_names.len() as i32;
+    
+    Ok(ModelUsageInfo {
+        is_used: usage_count > 0,
+        usage_count,
+        preset_names,
+    })
 }
 
 #[tauri::command]

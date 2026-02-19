@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { invoke } from '@tauri-apps/api/core';
-import type { ModelInfo, ModelType, ModelFilterOptions } from '../types';
+import type { ModelInfo, ModelType, ModelFilterOptions, ModelUsageInfo } from '../types';
 import { createEmptyModelInfo } from '../types';
 
 interface ModelState {
@@ -213,6 +213,16 @@ export const useModelStore = defineStore('model', {
         return [];
       } finally {
         this.isLoading = false;
+      }
+    },
+
+    async checkModelUsage(modelId: string): Promise<ModelUsageInfo | null> {
+      try {
+        const usageInfo = await invoke<ModelUsageInfo>('check_model_usage', { modelId });
+        return usageInfo;
+      } catch (e) {
+        console.error('Failed to check model usage:', e);
+        return null;
       }
     },
 

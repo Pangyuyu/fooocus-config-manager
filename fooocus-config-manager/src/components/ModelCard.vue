@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { NCard, NButton, NIcon, NTag, NPopconfirm } from 'naive-ui';
-import { Edit, Trash2, Copy, Box, Layers, Sparkles, FileCode } from 'lucide-vue-next';
-import type { ModelInfo, ModelType } from '../types';
+import { ref, computed, onMounted } from 'vue';
+import { NCard, NButton, NIcon, NTag, NPopconfirm, NSpin, NCollapse, NCollapseItem } from 'naive-ui';
+import { Edit, Trash2, Copy, Box, Layers, Sparkles, FileCode, AlertCircle } from 'lucide-vue-next';
+import type { ModelInfo, ModelType, ModelUsageInfo } from '../types';
+import { useModelStore } from '../stores/modelStore';
 
 const props = defineProps<{
   model: ModelInfo;
@@ -13,6 +14,10 @@ const emit = defineEmits<{
   edit: [model: ModelInfo];
   delete: [id: string];
 }>();
+
+const modelStore = useModelStore();
+const usageInfo = ref<ModelUsageInfo | null>(null);
+const isLoadingUsage = ref(false);
 
 const typeIcons: Record<ModelType, typeof Box> = {
   Checkpoint: Box,
@@ -47,6 +52,16 @@ const handleCopy = async () => {
   const configText = JSON.stringify(props.model, null, 2);
   await navigator.clipboard.writeText(configText);
 };
+
+const fetchUsageInfo = async () => {
+  isLoadingUsage.value = true;
+  usageInfo.value = await modelStore.checkModelUsage(props.model.id);
+  isLoadingUsage.value = false;
+};
+
+onMounted(() => {
+  fetchUsageInfo();
+});
 </script>
 
 <template>
@@ -103,9 +118,33 @@ const handleCopy = async () => {
           </NTag>
         </div>
 
-        <div class="flex items-center gap-2 text-xs text-gray-400">
+        <div class="flex items-center gap-2 text-xs text-gray-400 mb-2">
           <span>{{ formattedDate }}</span>
+          <NSpin v-if="isLoadingUsage" :size="12" />
+          <NTag
+            v-else-if="usageInfo?.isUsed"
+            size="small"
+            type="warning"
+            :bordered="false"
+          >
+            被 {{ usageInfo.usageCount }} 个配置使用
+          </NTag>
         </div>
+
+        <NCollapse v-if="usageInfo?.isUsed && usageInfo.presetNames.length > 0" class="mt-2">
+          <NCollapseItem title="关联配置" name="usage">
+            <div class="flex flex-wrap gap-1">
+              <NTag
+                v-for="name in usageInfo.presetNames"
+                :key="name"
+                size="small"
+                type="info"
+              >
+                {{ name }}
+              </NTag>
+            </div>
+          </NCollapseItem>
+        </NCollapse>
       </div>
 
       <div :class="[viewMode === 'list' ? 'flex items-center gap-1 ml-4' : 'flex items-center gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700']">
@@ -127,7 +166,16 @@ const handleCopy = async () => {
               </template>
             </NButton>
           </template>
-          确定要删除这个模型信息吗？
+          <div v-if="usageInfo?.isUsed" class="flex items-start gap-2">
+            <NIcon :component="AlertCircle" class="text-orange-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p class="font-medium text-orange-600">此模型被 {{ usageInfo.usageCount }} 个配置使用</p>
+              <p class="text-sm text-gray-500 mt-1">删除后这些配置中的模型关联将失效，确定要删除吗？</p>
+            </div>
+          </div>
+          <div v-else>
+            确定要删除这个模型信息吗？
+          </div>
         </NPopconfirm>
       </div>
     </div>

@@ -36,6 +36,8 @@ pub fn run() {
             commands::update_model,
             commands::delete_model,
             commands::search_models,
+            commands::get_presets_by_model_id,
+            commands::check_model_usage,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

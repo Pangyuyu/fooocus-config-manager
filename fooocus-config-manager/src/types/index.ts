@@ -2,13 +2,22 @@ export interface LoRA {
   name: string;
   modelName: string;
   weight: number;
+  modelId?: string;
 }
 
 export interface ModelConfig {
   baseModel: string;
+  baseModelId?: string;
   refinerModel: string;
+  refinerModelId?: string;
   refinerSwitch: number;
   loras: LoRA[];
+}
+
+export interface ModelUsageInfo {
+  isUsed: boolean;
+  usageCount: number;
+  presetNames: string[];
 }
 
 export type PerformanceMode = 'Speed' | 'Quality' | 'Lightning';

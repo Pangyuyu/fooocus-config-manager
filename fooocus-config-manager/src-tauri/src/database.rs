@@ -11,13 +11,19 @@ pub struct LoRA {
     pub name: String,
     pub model_name: String,
     pub weight: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelConfig {
     pub base_model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_model_id: Option<String>,
     pub refiner_model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refiner_model_id: Option<String>,
     pub refiner_switch: f64,
     pub loras: Vec<LoRA>,
 }
@@ -101,6 +107,14 @@ pub struct ModelInfo {
     pub tags: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelUsageInfo {
+    pub is_used: bool,
+    pub usage_count: i32,
+    pub preset_names: Vec<String>,
 }
 
 impl Database {
